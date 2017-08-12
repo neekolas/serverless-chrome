@@ -122,8 +122,16 @@ export default class Launcher {
 			// unref the chrome instance, otherwise the lambda process won't end correctly
 			if (chrome.chrome) {
 				chrome.chrome.removeAllListeners();
-				// chrome.chrome.unref()
+				chrome.chrome.unref();
 			}
+
+			chrome.on('close', (code, signal) => {
+				debug(`Chrome has closed with code ${code} and signal ${signal}`);
+			});
+
+			chrome.on('disconnect', () => {
+				debug('Chrome has disconnected');
+			});
 
 			fs.writeFileSync(this.pidFile, chrome.pid.toString());
 
