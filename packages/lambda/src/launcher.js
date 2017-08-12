@@ -7,205 +7,197 @@
   many dependencies which complicates packaging of serverless services.
 */
 
-import path from 'path'
-import fs from 'fs'
-import { execSync, spawn } from 'child_process'
-import net from 'net'
-import { delay, debug, makeTempDir, clearConnection } from './utils'
-import DEFAULT_CHROME_FLAGS from './flags'
+import path from 'path';
+import fs from 'fs';
+import { execSync, spawn } from 'child_process';
+import net from 'net';
+import { delay, debug, makeTempDir, clearConnection } from './utils';
+import DEFAULT_CHROME_FLAGS from './flags';
 
-const CHROME_PATH = path.resolve(__dirname, './headless_shell')
+const CHROME_PATH = path.resolve(__dirname, './headless_shell');
 
 export default class Launcher {
-  constructor (options = {}) {
-    const {
-      chromePath = CHROME_PATH,
-      chromeFlags = [],
-      startingUrl = 'about:blank',
-      port = 0,
-    } = options
+	constructor(options = {}) {
+		const { chromePath = CHROME_PATH, chromeFlags = [], startingUrl = 'about:blank', port = 0 } = options;
 
-    this.tmpDirandPidFileReady = false
-    this.pollInterval = 500
-    this.pidFile = ''
-    this.startingUrl = 'about:blank'
-    this.outFile = null
-    this.errFile = null
-    this.chromePath = CHROME_PATH
-    this.chromeFlags = []
-    this.requestedPort = 0
-    this.userDataDir = ''
-    this.port = 9222
-    this.pid = null
-    this.chrome = undefined
+		this.tmpDirandPidFileReady = false;
+		this.pollInterval = 500;
+		this.pidFile = '';
+		this.startingUrl = 'about:blank';
+		this.outFile = null;
+		this.errFile = null;
+		this.chromePath = CHROME_PATH;
+		this.chromeFlags = [];
+		this.requestedPort = 0;
+		this.userDataDir = '';
+		this.port = 9222;
+		this.pid = null;
+		this.chrome = undefined;
 
-    this.options = options
-    this.startingUrl = startingUrl
-    this.chromeFlags = chromeFlags
-    this.chromePath = chromePath
-    this.requestedPort = port
-  }
+		this.options = options;
+		this.startingUrl = startingUrl;
+		this.chromeFlags = chromeFlags;
+		this.chromePath = chromePath;
+		this.requestedPort = port;
+	}
 
-  get flags () {
-    return [
-      ...DEFAULT_CHROME_FLAGS,
-      `--remote-debugging-port=${this.port}`,
-      `--user-data-dir=${this.userDataDir}`,
-      '--disable-setuid-sandbox',
-      ...this.chromeFlags,
-      this.startingUrl,
-    ]
-  }
+	get flags() {
+		return [
+			...DEFAULT_CHROME_FLAGS,
+			`--remote-debugging-port=${this.port}`,
+			`--user-data-dir=${this.userDataDir}`,
+			'--disable-setuid-sandbox',
+			...this.chromeFlags,
+			this.startingUrl
+		];
+	}
 
-  prepare () {
-    this.userDataDir = this.options.userDataDir || makeTempDir()
-    this.outFile = fs.openSync(`${this.userDataDir}/chrome-out.log`, 'a')
-    this.errFile = fs.openSync(`${this.userDataDir}/chrome-err.log`, 'a')
-    this.pidFile = `${this.userDataDir}/chrome.pid`
-    this.tmpDirandPidFileReady = true
-  }
+	prepare() {
+		this.userDataDir = this.options.userDataDir || makeTempDir();
+		this.outFile = fs.openSync(`${this.userDataDir}/chrome-out.log`, 'a');
+		this.errFile = fs.openSync(`${this.userDataDir}/chrome-err.log`, 'a');
+		this.pidFile = `${this.userDataDir}/chrome.pid`;
+		this.tmpDirandPidFileReady = true;
+	}
 
-  // resolves if ready, rejects otherwise
-  isReady () {
-    return new Promise((resolve, reject) => {
-      const client = net.createConnection(this.port)
+	// resolves if ready, rejects otherwise
+	isReady() {
+		return new Promise((resolve, reject) => {
+			const client = net.createConnection(this.port);
 
-      client.once('error', (error) => {
-        clearConnection(client)
-        reject(error)
-      })
+			client.once('error', error => {
+				clearConnection(client);
+				reject(error);
+			});
 
-      client.once('connect', () => {
-        clearConnection(client)
-        resolve()
-      })
-    })
-  }
+			client.once('connect', () => {
+				clearConnection(client);
+				resolve();
+			});
+		});
+	}
 
-  // resolves when debugger is ready, rejects after 10 polls
-  waitUntilReady () {
-    const launcher = this
+	// resolves when debugger is ready, rejects after 10 polls
+	waitUntilReady() {
+		const launcher = this;
 
-    return new Promise((resolve, reject) => {
-      let retries = 0
-      ;(function poll () {
-        debug('Waiting for Chrome', retries)
+		return new Promise((resolve, reject) => {
+			let retries = 0;
+			(function poll() {
+				debug('Waiting for Chrome', retries);
 
-        launcher
-          .isReady()
-          .then(() => {
-            debug('Started Chrome')
-            resolve()
-          })
-          .catch((error) => {
-            retries += 1
+				launcher
+					.isReady()
+					.then(() => {
+						debug('Started Chrome');
+						resolve();
+					})
+					.catch(error => {
+						retries += 1;
 
-            if (retries > 10) {
-              return reject(error)
-            }
+						if (retries > 10) {
+							return reject(error);
+						}
 
-            return delay(launcher.pollInterval).then(poll)
-          })
-      }())
-    })
-  }
+						return delay(launcher.pollInterval).then(poll);
+					});
+			})();
+		});
+	}
 
-  async spawn () {
-    const spawnPromise = new Promise(async (resolve) => {
-      if (this.chrome) {
-        debug(`Chrome already running with pid ${this.chrome.pid}.`)
-        return resolve(this.chrome.pid)
-      }
+	async spawn() {
+		const spawnPromise = new Promise(async resolve => {
+			if (this.chrome) {
+				debug(`Chrome already running with pid ${this.chrome.pid}.`);
+				return resolve(this.chrome.pid);
+			}
 
-      const chrome = spawn(this.chromePath, this.flags, {
-        detached: true,
-        stdio: ['ignore', this.outFile, this.errFile],
-      })
+			const chrome = spawn(this.chromePath, this.flags, {
+				detached: true,
+				stdio: ['ignore', this.outFile, this.errFile]
+			});
 
-      this.chrome = chrome
+			this.chrome = chrome;
 
-      // unref the chrome instance, otherwise the lambda process won't end correctly
-      if (chrome.chrome) {
-        chrome.chrome.removeAllListeners()
-        chrome.chrome.unref()
-      }
+			// unref the chrome instance, otherwise the lambda process won't end correctly
+			if (chrome.chrome) {
+				chrome.chrome.removeAllListeners();
+				// chrome.chrome.unref()
+			}
 
-      fs.writeFileSync(this.pidFile, chrome.pid.toString())
+			fs.writeFileSync(this.pidFile, chrome.pid.toString());
 
-      debug('Launcher', `Chrome running with pid ${chrome.pid} on port ${this.port}.`)
+			debug('Launcher', `Chrome running with pid ${chrome.pid} on port ${this.port}.`);
 
-      return resolve(chrome.pid)
-    })
+			return resolve(chrome.pid);
+		});
 
-    const pid = await spawnPromise
-    await this.waitUntilReady()
-    return pid
-  }
+		const pid = await spawnPromise;
+		await this.waitUntilReady();
+		return pid;
+	}
 
-  async launch () {
-    if (this.requestedPort !== 0) {
-      this.port = this.requestedPort
+	async launch() {
+		if (this.requestedPort !== 0) {
+			this.port = this.requestedPort;
 
-      // If an explict port is passed first look for an open connection...
-      try {
-        return await this.isReady()
-      } catch (err) {
-        debug(
-          'ChromeLauncher',
-          `No debugging port found on port ${this.port}, launching a new Chrome.`
-        )
-      }
-    }
+			// If an explict port is passed first look for an open connection...
+			try {
+				return await this.isReady();
+			} catch (err) {
+				debug('ChromeLauncher', `No debugging port found on port ${this.port}, launching a new Chrome.`);
+			}
+		}
 
-    if (!this.tmpDirandPidFileReady) {
-      this.prepare()
-    }
+		if (!this.tmpDirandPidFileReady) {
+			this.prepare();
+		}
 
-    this.pid = await this.spawn()
-    return Promise.resolve()
-  }
+		this.pid = await this.spawn();
+		return Promise.resolve();
+	}
 
-  kill () {
-    return new Promise((resolve) => {
-      if (this.chrome) {
-        this.chrome.on('close', () => {
-          this.destroyTemp().then(resolve)
-        })
+	kill() {
+		return new Promise(resolve => {
+			if (this.chrome) {
+				this.chrome.on('close', () => {
+					this.destroyTemp().then(resolve);
+				});
 
-        debug('Killing all Chrome Instances')
+				debug('Killing all Chrome Instances');
 
-        try {
-          process.kill(-this.chrome.pid)
-        } catch (err) {
-          debug(`Chrome could not be killed ${err.message}`)
-        }
+				try {
+					process.kill(-this.chrome.pid);
+				} catch (err) {
+					debug(`Chrome could not be killed ${err.message}`);
+				}
 
-        delete this.chrome
-      } else {
-        // fail silently as we did not start chrome
-        resolve()
-      }
-    })
-  }
+				delete this.chrome;
+			} else {
+				// fail silently as we did not start chrome
+				resolve();
+			}
+		});
+	}
 
-  destroyTemp () {
-    return new Promise((resolve) => {
-      // Only clean up the tmp dir if we created it.
-      if (this.userDataDir === undefined || this.options.userDataDir !== undefined) {
-        return resolve()
-      }
+	destroyTemp() {
+		return new Promise(resolve => {
+			// Only clean up the tmp dir if we created it.
+			if (this.userDataDir === undefined || this.options.userDataDir !== undefined) {
+				return resolve();
+			}
 
-      if (this.outFile) {
-        fs.closeSync(this.outFile)
-        delete this.outFile
-      }
+			if (this.outFile) {
+				fs.closeSync(this.outFile);
+				delete this.outFile;
+			}
 
-      if (this.errFile) {
-        fs.closeSync(this.errFile)
-        delete this.errFile
-      }
+			if (this.errFile) {
+				fs.closeSync(this.errFile);
+				delete this.errFile;
+			}
 
-      return execSync(`rm -Rf ${this.userDataDir}`, resolve)
-    })
-  }
+			return execSync(`rm -Rf ${this.userDataDir}`, resolve);
+		});
+	}
 }
