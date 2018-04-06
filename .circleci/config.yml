@@ -9,7 +9,7 @@ jobs:
   # This job builds the base project directory (e.g. ~/package.json)
   build:
     docker:
-      - image: circleci/node:6.10.3
+      - image: circleci/node:8.10
     steps:
       - checkout
       - restore_cache:
@@ -23,7 +23,7 @@ jobs:
   # This job runs the lint tool on the whole repository
   lint:
     docker:
-      - image: circleci/node:8
+      - image: circleci/node:8.10
     steps:
       - checkout
       - restore_cache:
@@ -38,14 +38,14 @@ jobs:
           key: build-cache-{{ .Revision }}-package-lambda
       # need to set permissions on the npm prefix so that we can npm link packages
       - run: sudo chown -R $(whoami) $(npm config get prefix)/{lib/node_modules,bin,share}
-      - run: ./scripts/link-package.sh packages/serverless-plugin lambda               
+      - run: ./scripts/link-package.sh packages/serverless-plugin lambda
       - run: npm run lint
 
   # This job runs all of the unit tests in the repository
   unit_test:
     docker:
       # Node 8 so we can avoid transpiling our tests
-      - image: circleci/node:8
+      - image: circleci/node:8.10
       # The unit tests require DevTools on localhost:9222
       - image: adieuadieu/headless-chromium-for-aws-lambda:stable
     steps:
@@ -53,7 +53,7 @@ jobs:
       - restore_cache:
           key: dependency-cache-{{ checksum "package.json" }}
       - restore_cache:
-          key: dependency-cache-{{ checksum "packages/lambda/package.json" }}     
+          key: dependency-cache-{{ checksum "packages/lambda/package.json" }}
       - restore_cache:
           key: dependency-cache-{{ checksum "packages/serverless-plugin/package.json" }}-{{ checksum "packages/serverless-plugin/integration-test/package.json" }}
       - restore_cache:
@@ -65,12 +65,12 @@ jobs:
 
   # This job builds the @serverless-chrome/lambda package
   build_lambda:
-    # use a machine because we extract binaries from Docker images  
+    # use a machine because we extract binaries from Docker images
     machine: true
     steps:
       - checkout
       - restore_cache:
-          key: dependency-cache-{{ checksum "package.json" }}      
+          key: dependency-cache-{{ checksum "package.json" }}
       - restore_cache:
           key: dependency-cache-{{ checksum "packages/lambda/package.json" }}
       - run:
@@ -92,7 +92,7 @@ jobs:
       - save_cache:
           key: build-cache-{{ .Revision }}-package-lambda
           paths:
-            - packages/lambda/dist  
+            - packages/lambda/dist
 
   # This job runs the @serverless-chrome/lambda package's integration tests
   integration_test_lambda:
@@ -101,11 +101,11 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: dependency-cache-{{ checksum "package.json" }}      
+          key: dependency-cache-{{ checksum "package.json" }}
       - restore_cache:
           key: dependency-cache-{{ checksum "packages/lambda/package.json" }}
       - restore_cache:
-          key: build-cache-{{ .Revision }}-package-lambda               
+          key: build-cache-{{ .Revision }}-package-lambda
       - run:
           name: Integration test
           command: cd packages/lambda && npm test
@@ -113,11 +113,11 @@ jobs:
   # This job builds the serverless-plugin package
   build_serverless_plugin:
     docker:
-      - image: circleci/node:6.10.3
+      - image: circleci/node:8.10
     steps:
       - checkout
       - restore_cache:
-          key: dependency-cache-{{ checksum "package.json" }}      
+          key: dependency-cache-{{ checksum "package.json" }}
       - restore_cache:
           key: dependency-cache-{{ checksum "packages/serverless-plugin/package.json" }}-{{ checksum "packages/serverless-plugin/integration-test/package.json" }}
       - restore_cache:
@@ -130,15 +130,15 @@ jobs:
       - save_cache:
           key: build-cache-{{ .Revision }}-package-serverless-plugin
           paths:
-            - packages/serverless-plugin/dist         
+            - packages/serverless-plugin/dist
       - run: |
           [ -z "$CIRCLE_TAG" ] || ./scripts/link-package.sh packages/serverless-plugin/integration-test lambda
-      - run: cd packages/serverless-plugin/integration-test && npm install      
+      - run: cd packages/serverless-plugin/integration-test && npm install
       - save_cache:
           key: dependency-cache-{{ checksum "packages/serverless-plugin/package.json" }}-{{ checksum "packages/serverless-plugin/integration-test/package.json" }}
           paths:
             - packages/serverless-plugin/node_modules
-            - packages/serverless-plugin/integration-test/node_modules           
+            - packages/serverless-plugin/integration-test/node_modules
 
   # This job runs the serverless-plugin package's integration tests
   integration_test_serverless_plugin:
@@ -147,7 +147,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: dependency-cache-{{ checksum "package.json" }}      
+          key: dependency-cache-{{ checksum "package.json" }}
       - restore_cache:
           key: dependency-cache-{{ checksum "packages/serverless-plugin/package.json" }}-{{ checksum "packages/serverless-plugin/integration-test/package.json" }}
       - restore_cache:
@@ -159,32 +159,32 @@ jobs:
   # This job builds the serverless-framework AWS example service
   build_serverless_example:
     docker:
-      - image: circleci/node:6.10.3
+      - image: circleci/node:8.10
     steps:
       - checkout
       - restore_cache:
-          key: dependency-cache-{{ checksum "package.json" }}      
+          key: dependency-cache-{{ checksum "package.json" }}
       - restore_cache:
           key: dependency-cache-{{ checksum "examples/serverless-framework/aws/package.json" }}
       - restore_cache:
           key: build-cache-{{ .Revision }}-package-lambda
       - restore_cache:
-          key: build-cache-{{ .Revision }}-package-serverless-plugin          
+          key: build-cache-{{ .Revision }}-package-serverless-plugin
       # need to set permissions on the npm prefix so that we can npm link packages
       - run: sudo chown -R $(whoami) $(npm config get prefix)/{lib/node_modules,bin,share}
-      - run: ./scripts/link-package.sh packages/serverless-plugin lambda                
-      - run: ./scripts/link-package.sh examples/serverless-framework/aws serverless-plugin          
+      - run: ./scripts/link-package.sh packages/serverless-plugin lambda
+      - run: ./scripts/link-package.sh examples/serverless-framework/aws serverless-plugin
       - run: cd examples/serverless-framework/aws && npm install
       - save_cache:
           key: dependency-cache-{{ checksum "examples/serverless-framework/aws/package.json" }}
           paths:
-            - examples/serverless-framework/aws/node_modules      
+            - examples/serverless-framework/aws/node_modules
 
   # This job checks for new versions of browsers (chromium)
   # and updates the repository code when new docker images have been built
   update_browser_versions:
     docker:
-      - image: circleci/node:6.10.3
+      - image: circleci/node:8.10
     branch:
       - master
     steps:
@@ -230,13 +230,13 @@ jobs:
       - run:
           name: Install AWS CLI & JQ
           command: yum install -y aws-cli jq
-      - run: 
+      - run:
           name: Build stable-channel Chromium
           command: scripts/ci-daily.sh stable chromium
-      - run: 
+      - run:
           name: Build beta-channel Chromium
           command: scripts/ci-daily.sh beta chromium
-      - run: 
+      - run:
           name: Build dev-channel Chromium
           command: scripts/ci-daily.sh dev chromium
 
@@ -250,38 +250,38 @@ workflows:
 
   # Runs on every commit. The jobs install and build dependencies
   # and also setup test environments and prerequisites for integration tests
-  # On tagged commits on master branch, the "release" job automates publishing 
+  # On tagged commits on master branch, the "release" job automates publishing
   # of NPM packages and making a GitHub release. The release and npm packages are published
   # by a bot account (botsimo).
   build_test_release:
     jobs:
-      - build     
+      - build
 
-      - build_lambda:     
+      - build_lambda:
           requires:
             - build
-      - build_serverless_plugin:    
+      - build_serverless_plugin:
           requires:
             - build_lambda
-      - build_serverless_example:     
+      - build_serverless_example:
           requires:
             - build_serverless_plugin
-      - lint:      
-          requires:
-            - build
-            - build_lambda
-            - build_serverless_plugin
-            - build_serverless_example
-      - unit_test:     
+      - lint:
           requires:
             - build
             - build_lambda
             - build_serverless_plugin
             - build_serverless_example
-      - integration_test_lambda:      
+      - unit_test:
+          requires:
+            - build
+            - build_lambda
+            - build_serverless_plugin
+            - build_serverless_example
+      - integration_test_lambda:
           requires:
             - build_lambda
-      - integration_test_serverless_plugin:    
+      - integration_test_serverless_plugin:
           requires:
             - build_serverless_plugin
       - release:

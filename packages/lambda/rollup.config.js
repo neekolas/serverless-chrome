@@ -28,7 +28,7 @@ export default {
           {
             modules: false,
             targets: {
-              node: '6.10',
+              node: '8.10',
             },
           },
         ],

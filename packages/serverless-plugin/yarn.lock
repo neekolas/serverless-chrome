@@ -44,9 +44,9 @@
   dependencies:
     arrify "^1.0.1"
 
-"@serverless-chrome/lambda@1.0.0-32":
-  version "1.0.0-32"
-  resolved "https://registry.yarnpkg.com/@serverless-chrome/lambda/-/lambda-1.0.0-32.tgz#6638cf36d04d255b89809adfed0c4a8c8725f2ca"
+"@serverless-chrome/lambda@1.0.0-41":
+  version "1.0.0-41"
+  resolved "https://registry.yarnpkg.com/@serverless-chrome/lambda/-/lambda-1.0.0-41.tgz#f8107fcf50127432daf9b92a6594c1e4a24f5df9"
   dependencies:
     extract-zip "1.6.6"
 

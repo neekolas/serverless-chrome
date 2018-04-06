@@ -35,7 +35,7 @@ npm install --save-dev chrome-launcher
 
 ## Setup
 
-Use in your AWS Lambda function. Requires Node 6.10.
+Use in your AWS Lambda function. Requires Node 8.10.
 
 
 ```js

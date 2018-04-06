@@ -25,7 +25,7 @@
   "homepage": "https://github.com/adieuadieu/serverless-chrome/tree/master/packages/lambda",
   "license": "MIT",
   "engines": {
-    "node": ">= 6.10"
+    "node": ">= 8.10"
   },
   "config": {
     "jsSrc": "src/"
@@ -63,7 +63,7 @@
         {
           "modules": "commonjs",
           "targets": {
-            "node": "6.10"
+            "node": "8.10"
           }
         }
       ]
